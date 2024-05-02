@@ -68,8 +68,8 @@ def main():
         output_file = "output.mp4"
         perform_object_detection(video_file_path, output_file)
         st.success(f"Processed video saved as {output_file}")
-        with open('detected_frames.mp4', 'rb') as v:
-            st.video(v)
+        
+            
 
 if __name__ == "__main__":
     main()
