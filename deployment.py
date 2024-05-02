@@ -1,8 +1,8 @@
 import streamlit as st
-import cv2
 import numpy as np
 from PIL import Image
 from ultralytics import YOLO
+from moviepy.editor import VideoFileClip, ImageSequenceClip
 
 def save_uploaded_file(uploaded_file):
     with open("uploaded_video.mp4", "wb") as f:
@@ -13,21 +13,15 @@ def perform_object_detection(video_file, output_file):
     model = YOLO('best.pt').load('best.pt')
     model.cpu()
 
-    cap = cv2.VideoCapture(video_file)
-    fps = int(cap.get(cv2.CAP_PROP_FPS))
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_file, fourcc, fps, (width, height))
+    clip = VideoFileClip(video_file)
+    fps = clip.fps
+    width, height = clip.size
 
     detected_frames = []
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        results = model.predict(frame)
+    for frame in clip.iter_frames():
+        img = Image.fromarray(frame)
+        results = model.predict(np.array(img))
         for result in results:
             boxes = result.boxes.xyxy.cpu().numpy()
             names = result.names
@@ -36,26 +30,29 @@ def perform_object_detection(video_file, output_file):
             for box, cls in zip(boxes, classes):
                 xmin, ymin, xmax, ymax = box.astype(int)
                 label = names[cls]
-                cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
-                cv2.putText(frame, label, (xmin, ymin - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                img = draw_bbox(img, xmin, ymin, xmax, ymax, label)
 
-        out.write(frame)
-        detected_frames.append(frame)
+        detected_frames.append(np.array(img))
 
-        frame_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        st.image(frame_pil, channels="RGB", use_column_width=True)
-
-    cap.release()
-    out.release()
-
-    # Create a video of detected frames
+    # Write the detected frames to a video file
     if len(detected_frames) > 0:
         detected_output_file = "detected_frames.mp4"
-        out = cv2.VideoWriter(detected_output_file, fourcc, fps, (width, height))
-        for frame in detected_frames:
-            out.write(frame)
-        out.release()
+        detected_clip = ImageSequenceClip(detected_frames, fps=fps)
+        detected_clip.write_videofile(detected_output_file, fps=fps)
         st.success(f"Detected frames saved as {detected_output_file}")
+
+def draw_bbox(img, xmin, ymin, xmax, ymax, label):
+    # Draw bounding box and label on the image
+    bbox_color = (0, 255, 0)
+    font_color = (0, 255, 0)
+    thickness = 2
+    font_scale = 0.5
+    from PIL import ImageDraw, ImageFont
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([xmin, ymin, xmax, ymax], outline=bbox_color, width=thickness)
+    draw.text((xmin, ymin - 10), label, fill=font_color)
+    return img
+
 def main():
     st.title("Object Detection on Video with YOLO")
 
