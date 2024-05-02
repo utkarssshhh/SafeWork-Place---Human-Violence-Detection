@@ -68,6 +68,8 @@ def main():
         output_file = "output.mp4"
         perform_object_detection(video_file_path, output_file)
         st.success(f"Processed video saved as {output_file}")
+        with open('detected_frames.mp4', 'rb') as f:
+          st.download_button('Download Zip', f, file_name='video.mp4')
         
             
 
