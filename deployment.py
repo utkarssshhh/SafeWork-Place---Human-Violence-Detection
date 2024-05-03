@@ -57,7 +57,7 @@ def perform_object_detection(video_file, output_file):
         out.release()
         st.success(f"Detected frames saved as {detected_output_file}")
 def main():
-    st.title("Violence Detection on Video with YOLO")
+    st.title("Violence Detection on Video")
 
     uploaded_file = st.file_uploader("Choose a video file", type=["mp4"])
 
